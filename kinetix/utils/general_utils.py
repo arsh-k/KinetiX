@@ -83,7 +83,29 @@ def get_parser():
                         help='Compute the reciprocal of the diffusion '
                              'coefficients to avoid expensive divisions '
                              'in the diffusivity kernel.')
+    parser.add_argument('--nonsymthetaij',
+                        required=False,
+                        action='store_true',
+                        help='Compute both the upper and lower part of the'
+                              'thetaij matrix, although it is symmetric. It avoids'
+                              'expensive memory allocation in some cases.')
+    parser.add_argument('--light-species',
+                        required=False,
+                        action='store_true',
+                        help='Compute the thermal diffusion ratios only for'
+                             'light species (molecular weight < 5). It requires the'
+                             'argument --nonsymthetaij.')
+    parser.add_argument('--cubic-polyfit',
+                        required=False,
+                        action='store_true',
+                        help='Compute a cubic (3rd order) polynomial fit,'
+                             'particularly used for testing the accuracy of'
+                             'thermal diffusion ratio polynomial fitting.')
     args = parser.parse_args()
+
+    if args.light_species and not args.nonsymthetaij:
+        parser.error("The argument --light-species requires --nonsymthetaij to be set.")
+
     return args
 
 
@@ -227,7 +249,9 @@ def polynomial_regression(X, Y, degree=4, weights=None):
     """
 
     if weights is None:
-        weights = [1 / abs(y) for y in Y]
+        epsilon = 1e-5
+        weights = [ 1 / (abs(y) + epsilon) for y in Y]
+    
     return polynomial.polynomial.polyfit(X, Y, deg=degree, w=weights)
 
 

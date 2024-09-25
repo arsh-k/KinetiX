@@ -23,7 +23,10 @@ def generate_files(mech_file=None,
                    transport=True,
                    group_vis=False,
                    nonsymDij=False,
-                   rcp_diffcoeffs=False
+                   rcp_diffcoeffs=False,
+                   nonsymthetaij=False,
+                   lightspeciesonly=False,
+                   cubicpolyfit=False
                    ):
     """
     Generate the production rates, thermodynamic and transport properties
@@ -41,7 +44,7 @@ def generate_files(mech_file=None,
         lambda specie: any([reaction.net[species_names_init.index(specie['name'])] != 0
                             for reaction in reactions_init]), model['species'])
     # Load species and reactions with new indexing (inert species at the end)
-    species = trans.get_species_from_model(active_sp+inert_sp, rcp_diffcoeffs)
+    species = trans.get_species_from_model(active_sp+inert_sp, rcp_diffcoeffs, cubicpolyfit)
     species_names = species.sp_names
     reactions = [reac.get_reaction_from_model(species_names, model['units'], reaction)
                  for reaction in model['reactions']]
@@ -68,6 +71,8 @@ def generate_files(mech_file=None,
         conductivity_file = 'fconductivity.cpp'
         viscosity_file = 'fviscosity.cpp'
         diffusivity_file = 'fdiffusivity.cpp'
+        therm_diff_ratio_file  = 'fthermdiffratio.cpp' 
+
     else:
         gutils.set_precision('FP64')
         rates_file = 'rates.cpp'
@@ -76,6 +81,7 @@ def generate_files(mech_file=None,
         conductivity_file = 'conductivity.cpp'
         viscosity_file = 'viscosity.cpp'
         diffusivity_file = 'diffusivity.cpp'
+        therm_diff_ratio_file  = 'thermdiffratio.cpp' 
 
     if header_only:
         mech.write_file_mech(mech_file, output_dir, species_names, species_len, active_sp_len, reactions_len, Mi)
@@ -99,6 +105,15 @@ def generate_files(mech_file=None,
                 else:
                     trans.write_file_diffusivity_unroll(diffusivity_file, output_dir, rcp_diffcoeffs,
                                                         transport_polynomials, species_len, Mi)
+                
+                if nonsymthetaij:
+                    trans.write_file_therm_diff_ratio_nonsym_unroll(therm_diff_ratio_file, output_dir, 
+                                                                    transport_polynomials, lightspeciesonly,
+                                                                    cubicpolyfit, species_names, species_len, Mi)
+                else:
+                    trans.write_file_therm_diff_ratio_unroll(therm_diff_ratio_file, output_dir,
+                                                             transport_polynomials, species_len)    
+                
         else:  # Rolled code
             reac.write_file_rates_roll(rates_file, output_dir, align_width, target,
                                        species.thermo, species_len, reactions, reactions_len)
@@ -119,6 +134,14 @@ def generate_files(mech_file=None,
                     trans.write_file_diffusivity_roll(diffusivity_file, output_dir,
                                                       align_width, target, rcp_diffcoeffs,
                                                       transport_polynomials, species_len, Mi)
-
+                if nonsymthetaij:
+                    trans.write_file_therm_diff_ratio_nonsym_roll(therm_diff_ratio_file, output_dir,
+                                                                  align_width, lightspeciesonly,
+                                                                  cubicpolyfit, target, transport_polynomials, 
+                                                                  species_len, Mi)
+                else:
+                    trans.write_file_therm_diff_ratio_roll(therm_diff_ratio_file, output_dir, 
+                                                           align_width, target, transport_polynomials, 
+                                                           species_len)
     return 0
 

@@ -34,7 +34,10 @@ def main(args=None):
                        transport=args.transport,
                        group_vis=args.group_vis,
                        nonsymDij=args.nonsymDij,
-                       rcp_diffcoeffs=args.fit_rcpdiffcoeffs
+                       rcp_diffcoeffs=args.fit_rcpdiffcoeffs,
+                       nonsymthetaij=args.nonsymthetaij,
+                       lightspeciesonly=args.light_species,
+                       cubicpolyfit=args.cubic_polyfit
                        )
 
 
