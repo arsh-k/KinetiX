@@ -182,8 +182,8 @@ class Species:
 
     def _therm_diff_ratio(self, j, k, T):
         Mi = self.Mi
-        return 7.5 * (((2*self._a_star(j, k, T) + 5) * (6*self._c_star(j, k, T) - 5)) 
-                  / (self._a_star(j, k, T) * (16*self._a_star(j, k, T) - 12*self._b_star(j,k,T) + 55))) * ((Mi[k] - Mi[j]) / (Mi[k] + Mi[j]))
+        return (15. / 2.) * (((2.*self._a_star(j, k, T) + 5.) * (6.*self._c_star(j, k, T) - 5.)) 
+                  / (self._a_star(j, k, T) * (16.*self._a_star(j, k, T) - 12.*self._b_star(j,k,T) + 55.))) * ((Mi[j] - Mi[k]) / (Mi[j] + Mi[k]))
     
     def transport_polynomials(self):
         T_min = max(sp_temp_rng[0] for sp_temp_rng in self._temperature_ranges)

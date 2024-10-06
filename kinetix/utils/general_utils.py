@@ -249,7 +249,7 @@ def polynomial_regression(X, Y, degree=4, weights=None):
     """
 
     if weights is None:
-        epsilon = 1e-5
+        epsilon = 1e-8
         weights = [ 1 / (abs(y) + epsilon) for y in Y]
     
     return polynomial.polynomial.polyfit(X, Y, deg=degree, w=weights)
