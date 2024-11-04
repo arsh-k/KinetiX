@@ -342,3 +342,13 @@ Omega_star_22 = polynomial_regression_delta_star(collision_integrals_Omega_star_
 A_star = polynomial_regression_delta_star(collision_integrals_A_star)
 B_star = polynomial_regression_delta_star(collision_integrals_B_star)
 C_star = polynomial_regression_delta_star(collision_integrals_C_star)
+
+# These A*, B* and C* values are strictly used to compute the thermal diffusion ratios.
+A_star_ck = [0.1106910525e01, -0.7065517161e-02, -0.1671975393e-01, 0.1188708609e-01, 
+             0.7569367323e-03, -0.1313998345e-02, 0.1720853282e-03]
+
+B_star_ck = [0.1199673577e01, -0.1140928763e00, -0.2147636665e-02, 0.2512965407e-01,
+             -0.3030372973e-02, -0.1445009039e-02, 0.2492954809e-03]
+
+C_star_ck = [0.8386993788e00, 0.4748325276e-01, 0.3250097527e-01, -0.1625859588e-01,
+             -0.2260153363e-02, 0.1844922811e-02, -0.2115417788e-03]

@@ -99,6 +99,14 @@ class Species:
         return (0.5 * mu[j] * mu[k] / (4. * pi * const.epsilon0 * sqrt(eps[j] * eps[k]) *
                                        cube((sigma[j] + sigma[k]) / 2.)))
 
+    def _alpha_star(self, j):
+        (alpha, sigma) = (self._alpha, self._sigma)
+        return alpha[j]/(sigma[j]**3) #cm units
+    
+    def _mu_star(self, j):
+        (eps, mu, sigma) = (self._eps, self._mu, self._sigma)
+        return mu[j] / sqrt(eps[j]*(sigma[j]**3))
+    
     def _collision_integral(self, I0, table, fit, j, k, T):
         lnT_star = ln(self._T_star(j, k, T))
         header_lnT_star = self._header_lnT_star[1:-1]
@@ -138,18 +146,38 @@ class Species:
             y = [_evaluate_polynomial(P[:6], delta_star) for P in polynomials]
         return _quadratic_interpolation(header_lnT_star_slice, y, lnT_star)
 
+    def _star_evaluation_ck(self, star_values, j, k, T):
+        eps = self._eps
+        # tse = 1.0 + 0.25*self._alpha_star(j)*self._mu_star(k)*sqrt(eps[k]/eps[j])
+        eps_j_kb, eps_k_kb = eps[j]/const.kB, eps[k]/const.kB
+        eps_kb = self._xi(j, k)**2 * sqrt(eps_j_kb*eps_k_kb)
+        T_log  = ln(T) - ln(eps_kb)
+        star_val = star_values[6]
+        for i in range(len(star_values) - 1):
+            star_val = star_values[5-i] + star_val * T_log
+        return star_val
+
     def _omega_star_22(self, j, k, T):
         return self._collision_integral(0, const.collision_integrals_Omega_star_22, const.Omega_star_22, j, k, T)
 
-    def _a_star(self, j, k, T):
-        return self._collision_integral(1, const.collision_integrals_A_star, const.A_star, j, k, T)
+    def _a_star(self, j, k, T, ck=False):
+        if ck == True:
+            return self._star_evaluation_ck(const.A_star_ck, j, k, T)
+        else:
+            return self._collision_integral(1, const.collision_integrals_A_star, const.A_star, j, k, T)
 
-    def _b_star(self, j, k, T):
-        return self._collision_integral(1, const.collision_integrals_B_star, const.B_star, j, k, T)
+    def _b_star(self, j, k, T, ck=False):
+        if ck == True:
+            return self._star_evaluation_ck(const.B_star_ck, j, k, T)
+        else:
+            return self._collision_integral(1, const.collision_integrals_B_star, const.B_star, j, k, T)
 
-    def _c_star(self, j, k, T):
-        return self._collision_integral(1, const.collision_integrals_C_star, const.C_star, j, k, T)
-
+    def _c_star(self, j, k, T, ck=False):
+        if ck == True:
+            return self._star_evaluation_ck(const.C_star_ck, j, k, T)
+        else:
+            return self._collision_integral(1, const.collision_integrals_C_star, const.C_star, j, k, T)
+    
     def _omega_star_11(self, j, k, T):
         return self._omega_star_22(j, k, T) / self._a_star(j, k, T)
 
@@ -182,8 +210,10 @@ class Species:
 
     def _therm_diff_ratio(self, j, k, T):
         Mi = self.Mi
-        return (15. / 2.) * (((2.*self._a_star(j, k, T) + 5.) * (6.*self._c_star(j, k, T) - 5.)) 
-                  / (self._a_star(j, k, T) * (16.*self._a_star(j, k, T) - 12.*self._b_star(j,k,T) + 55.))) * ((Mi[j] - Mi[k]) / (Mi[j] + Mi[k]))
+        ck = True
+        return (15. / 2.) * (((2.*self._a_star(j, k, T, ck=ck) + 5.) * (6.*self._c_star(j, k, T, ck=ck) - 5.)) 
+                  / (self._a_star(j, k, T, ck=ck) * (16.*self._a_star(j, k, T, ck=ck) - 12.*self._b_star(j,k,T, ck=ck) 
+                                                     + 55.))) * ((Mi[k] - Mi[j]) / (Mi[j] + Mi[k]))
     
     def transport_polynomials(self):
         T_min = max(sp_temp_rng[0] for sp_temp_rng in self._temperature_ranges)
@@ -567,7 +597,7 @@ def write_file_therm_diff_ratio_nonsym_roll(file_name, output_dir, align_width, 
     return 0
 
 def write_file_therm_diff_ratio_roll(file_name, output_dir, align_width, target,
-                                     transport_polynomials, sp_len):
+                                     transport_polynomials, cubicpolyfit, sp_len):
     """
     Write the 'fthermdiffratio.inc' file with rolled loop specification.
     """
@@ -579,9 +609,13 @@ def write_file_therm_diff_ratio_roll(file_name, output_dir, align_width, target,
             d1.append(transport_polynomials.therm_diff_ratio[k][j][1])
             d2.append(transport_polynomials.therm_diff_ratio[k][j][2])
             d3.append(transport_polynomials.therm_diff_ratio[k][j][3])
-            d4.append(transport_polynomials.therm_diff_ratio[k][j][4])
-    var_str = ['d0', 'd1', 'd2', 'd3', 'd4']
-    var = [d0, d1, d2, d3, d4]
+            if cubicpolyfit:
+                var_str = ['d0', 'd1', 'd2', 'd3']
+                var     = [d0, d1, d2, d3]
+            else:
+                d4.append(transport_polynomials.therm_diff_ratio[k][j][4])
+                var_str = ['d0', 'd1', 'd2', 'd3', 'd4']
+                var = [d0, d1, d2, d3, d4]
 
     cg = CodeGenerator()
     cg.add_line(f"__KINETIX_DEVICE__ __KINETIX_INLINE__  void kinetix_therm_diff_ratio"
@@ -601,7 +635,7 @@ def write_file_therm_diff_ratio_roll(file_name, output_dir, align_width, target,
     cg.add_line(f"unsigned int idx = k*(k-1)/2+j;", 3)
     cg.add_line(f"cfloat theta_kj = d0[idx] + d1[idx]*T + d2[idx]*T2 + d3[idx]*T3 + d4[idx]*T4;", 3)
     cg.add_line(f"sums1[k] += Xi[k]*Xi[j]*theta_kj;", 3)
-    cg.add_line(f"sums2[j] += Xi[j]*Xi[k]*theta_kj;", 3)
+    cg.add_line(f"sums2[j] += Xi[j]*Xi[k]*(-theta_kj);", 3)
     cg.add_line(f"}}", 2)
     cg.add_line(f"}}", 1)
     cg.add_line("")
@@ -797,12 +831,12 @@ def write_file_therm_diff_ratio_nonsym_unroll(file_name, output_dir, transport_p
                 if cubicpolyfit:
                     cg.add_line(f"""{('+' + cg.new_line).join(
                                 f"{cg.di}Xi[{k}] * Xi[{j}] *"
-                                f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k if k > j else j][j if k > j else k], 3)})"
+                                f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k][j], 3)})"
                                 for j in list(range(k)) + list(range(k + 1, sp_len)))};""")
                 else:
                     cg.add_line(f"""{('+' + cg.new_line).join(
                                 f"{cg.di}Xi[{k}] * Xi[{j}] *"
-                                f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k if k > j else j][j if k > j else k], 4)})"
+                                f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k][j], 4)})"
                                 for j in list(range(k)) + list(range(k + 1, sp_len)))};""")
             else:
                 cg.add_line(f"Theta_k[{k}] = 1;", 1)
@@ -811,19 +845,19 @@ def write_file_therm_diff_ratio_nonsym_unroll(file_name, output_dir, transport_p
             if cubicpolyfit:
                 cg.add_line(f"""{('+' + cg.new_line).join(
                             f"{cg.di}Xi[{k}] * Xi[{j}] *"
-                            f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k if k > j else j][j if k > j else k], 3)})"
+                            f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k][j], 3)})"
                             for j in list(range(k)) + list(range(k + 1, sp_len)))};""")
             else:
                 cg.add_line(f"""{('+' + cg.new_line).join(
                             f"{cg.di}Xi[{k}] * Xi[{j}] *"
-                            f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k if k > j else j][j if k > j else k], 4)})"
+                            f"({evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k][j], 4)})"
                             for j in list(range(k)) + list(range(k + 1, sp_len)))};""")
             cg.add_line(f"")
     cg.add_line(f"}}")
     cg.write_to_file(output_dir, file_name)
     return 0
 
-def write_file_therm_diff_ratio_unroll(file_name, output_dir, transport_polynomials, sp_len):
+def write_file_therm_diff_ratio_unroll(file_name, output_dir, transport_polynomials, cubicpolyfit, sp_len):
     """
     Write the 'fthermdiffratio.inc' file with unrolled loop specification.
     """
@@ -841,9 +875,12 @@ def write_file_therm_diff_ratio_unroll(file_name, output_dir, transport_polynomi
     cg.add_line(f"{{")
     for k in range(sp_len):
         for j in range(k):
-            cg.add_line(f"cfloat theta{k}_{j} = {evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k][j])};", 1)
+            if cubicpolyfit:
+                cg.add_line(f"cfloat theta{k}_{j} = {evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k][j], 3)};", 1)
+            else:
+                cg.add_line(f"cfloat theta{k}_{j} = {evaluate_polynomial_weak(transport_polynomials.therm_diff_ratio[k][j], 4)};", 1)
             cg.add_line(f"cfloat S{k}_{j} = {mut(f'{S[k]}+' if S[k] else '', k, f'S{k}_{j}')}Xi[{k}]*Xi[{j}]*theta{k}_{j};", 1)
-            cg.add_line(f"cfloat S{j}_{k} = {mut(f'{S[j]}+' if S[j] else '', j, f'S{j}_{k}')}Xi[{j}]*Xi[{k}]*theta{k}_{j};", 1)
+            cg.add_line(f"cfloat S{j}_{k} = {mut(f'{S[j]}+' if S[j] else '', j, f'S{j}_{k}')}Xi[{j}]*Xi[{k}]*(-theta{k}_{j});", 1)
     for k in range(sp_len):
         cg.add_line(f"Theta_k[{k}] = {S[k]};", 1)
     cg.add_line(f"}}")

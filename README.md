@@ -51,7 +51,7 @@ To install the benchmark kernels, use the provided setup script:
 
 ```sh
 cd benchmark
-./install_bk.sh
+source ./install_bk.sh --help
 ```
 
 For custom installation options, such as changing the installation directory or changing the amrex backend, run:
@@ -62,7 +62,7 @@ For custom installation options, such as changing the installation directory or 
 ### BK1: Species Production Rates
 ```sh
 export OCCA_CXX=mpic++
-mpirun -np 1 ${KINETIX_PATH}/bin/kinetix_bk --backend SERIAL --n-states 1000000 --mode 1 --yaml-file kinetix/mechanisms/gri30.yaml
+mpirun -np 1 ${KINETIX_PATH}/bin/kinetix_bk --backend SERIAL --n-states 10 --mode 1 --yaml-file kinetix/mechanisms/gri30.yaml
 ```
 ```sh
 mpirun -np 1 ${KINETIX_PATH}/bin/kinetix_bk --backend CUDA --n-states 1000000 --mode 1 --yaml-file kinetix/mechanisms/gri30.yaml --unroll-loops
@@ -74,7 +74,7 @@ export OCCA_CXX=mpic++
 mpirun -np 1 ${KINETIX_PATH}/bin/kinetix_bk --backend SERIAL --n-states 1000000 --mode 2  --yaml-file kinetix/mechanisms/gri30.yaml
 ```
 ```sh
-mpirun -np 1 ${KINETIX_PATH}/bin/kinetix_bk --backend CUDA --n-states 1000000 --mode 2  --yaml-file kinetix/mechanisms/gri30.yaml --unroll-loops
+mpirun -np 1 ${KINETIX_PATH}/bin/kinetix_bk --backend CUDA --n-states 10 --mode 1 --yaml-file kinetix/mechanisms/gri30.yaml --unroll-loops
 ```
 
 ## Examples

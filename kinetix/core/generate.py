@@ -112,7 +112,7 @@ def generate_files(mech_file=None,
                                                                     cubicpolyfit, species_names, species_len, Mi)
                 else:
                     trans.write_file_therm_diff_ratio_unroll(therm_diff_ratio_file, output_dir,
-                                                             transport_polynomials, species_len)    
+                                                             transport_polynomials, cubicpolyfit, species_len)    
                 
         else:  # Rolled code
             reac.write_file_rates_roll(rates_file, output_dir, align_width, target,
@@ -142,6 +142,6 @@ def generate_files(mech_file=None,
                 else:
                     trans.write_file_therm_diff_ratio_roll(therm_diff_ratio_file, output_dir, 
                                                            align_width, target, transport_polynomials, 
-                                                           species_len)
+                                                           cubicpolyfit, species_len)
     return 0
 
