@@ -51,12 +51,12 @@ To install the benchmark kernels, use the provided setup script:
 
 ```sh
 cd benchmark
-source ./install_bk.sh --help
+./install_bk.sh --help
 ```
 
 For custom installation options, such as changing the installation directory or changing the amrex backend, run:
 ```sh
-./install_bk.sh --help
+source ./install_bk.sh --help
 ```
 
 ### BK1: Species Production Rates
