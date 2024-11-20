@@ -101,7 +101,7 @@ class Species:
 
     def _alpha_star(self, j):
         (alpha, sigma) = (self._alpha, self._sigma)
-        return alpha[j]/(sigma[j]**3) #cm units
+        return alpha[j]/(sigma[j]**3)
     
     def _mu_star(self, j):
         (eps, mu, sigma) = (self._eps, self._mu, self._sigma)
