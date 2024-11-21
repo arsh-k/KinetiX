@@ -684,17 +684,11 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
         # Process k0 if available
         # Indices for k0 are number of reactions + reaction index
         if hasattr(rxn[i], 'k0'):
-            # if i >=1 and rxn[i-1].type == "P-log":
-            #     num_prev_plog_k = sum(len(value) for value in rxn[i-1].plog_k.values())
-            #     k0_ids = rxn_len + i + num_prev_plog_k - 1
-            # else:
-            #     k0_ids = rxn_len + i
             k0_ids = rxn_len + i
             ids_old.append(k0_ids)
             A.append(rxn[i].k0.preexponential_factor)
             beta.append(rxn[i].k0.temperature_exponent)
             E_R.append(rxn[i].k0.activation_temperature)
-
             if beta[-1] == 0 and E_R[-1] == 0:
                 ids_E0B0.append(k0_ids)
             elif beta[-1] == -2 and E_R[-1] == 0:
@@ -717,23 +711,17 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                     ids_EB.append(k0_ids)
 
         elif rxn[i].type == 'P-log':
-            # if (i >=1) and rxn[i-1].type == "P-log":
-                # num_prev_plog_k = sum(len(value) for value in rxn[i-1].plog_k.values())
-                # plog_ids = rxn_len + i + num_prev_plog_k - 1
-            num_plog_k = sum(len(value) for value in rxn[i].plog_k.values())
-            plog_ids = rxn_len *(num_plog_k - 1) + i
-            # else:
-            #     plog_ids = rxn_len + i
+            plog_ids = i
             for idx, key in enumerate(rxn[i].plog_k):                
                 if key not in pressure_plog:
                     pressure_plog.append(key)
                 # Adding multiple rates per single pressure functionality.
-                num_k = len(rxn[i].plog_k[key])
-                for j in range(num_k):
+                num_plog_k = len(rxn[i].plog_k[key])
+                for k in range(num_plog_k):
                     ids_old.append(plog_ids)
-                    A.append(rxn[i].plog_k[key][j][0])
-                    beta.append(rxn[i].plog_k[key][j][1])
-                    E_R.append(rxn[i].plog_k[key][j][2])
+                    A.append(rxn[i].plog_k[key][k][0])
+                    beta.append(rxn[i].plog_k[key][k][1])
+                    E_R.append(rxn[i].plog_k[key][k][2])
                     if beta[-1] == 0 and E_R[-1] == 0:
                         ids_E0B0.append(plog_ids)
                     elif beta[-1] == -2 and E_R[-1] == 0:
@@ -755,7 +743,7 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                         if not match_found:
                             ids_EB.append(plog_ids)
 
-                    plog_ids += 1
+                    plog_ids += rxn_len 
 
     # Group repeated constants for better vectorization
     unique_pos_ids_ErBr = list(dict.fromkeys(pos_ids_ErBr))
@@ -1123,7 +1111,7 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                     for k in range(num_k):  
                         if k > 0:
                             kf_str += " + "
-                        kf_str += f"kf[{ids_new.index(p_idx+k)}]"
+                        kf_str += f"kf[{ids_new.index(p_idx+k*rxn_len)}]"
                     return kf_str
 
             cg_plog.add_line("")
@@ -1173,15 +1161,9 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                                     cg_plog.add_line(f"}}", 1)
                                     cg_plog.add_line(f"if ((P > {pressure_plog[j1]}) && (P <= {pressure_plog[j2]})){{", 1)
                                     count+=1
-                                # Checks if the previous reaction was a p-log reaction as well.
-                                # if rxn_count == 0 or (rxn_count != 0 and i != (ids_plog_rxn[rxn_count-1] + 1)):
-                                #     p1_idx = rxn_len + i + prev_num_k 
-                                # else:
-                                    # num_prev_plog_k = sum(len(value) for value in rxn[i-1].plog_k.values())
-                                num_plog_k = sum(len(value) for value in rxn[i].plog_k.values())
-                                p1_idx = rxn_len*(num_plog_k - 1) + i + prev_num_k 
-                                
-                                p2_idx = p1_idx + num_k_p1
+
+                                p1_idx = rxn_len*prev_num_k + i 
+                                p2_idx = p1_idx + rxn_len*num_k_p1
 
                                 cg_plog.add_line(f"kf[{ids_new.index(i)}] = exp("
                                                  f" log({write_multiple_plog_rates_roll(p1_idx, p1, i)}) + ( log({write_multiple_plog_rates_roll(p2_idx, p2, i)})"
@@ -1200,35 +1182,19 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                         if count_low == 0:
                                 cg_plog.add_line(f"if (P <= {pressure_plog[j1]}){{", 1)
                                 count_low=1
-                        # Checks if the previous reaction was a p-log reaction as well.
-                        # if rxn_count == 0 or (rxn_count != 0 and i != (ids_plog_rxn[rxn_count-1] + 1)):
-                        #     p1_idx = rxn_len + i
-                        # else:
-                            # num_prev_plog_k = sum(len(value) for value in rxn[i-1].plog_k.values())
-                            # p1_idx = rxn_len + i + num_prev_plog_k - 1
-                        num_plog_k = sum(len(value) for value in rxn[i].plog_k.values())
-                        p1_idx = rxn_len*(num_plog_k - 1) + i  
-                        
+                        p1_idx = i
                         cg_plog.add_line(f"kf[{ids_new.index(i)}]"
                                          f"= {write_multiple_plog_rates_roll(p1_idx, pressure_plog[j1], i)};", 2)
                         
                     elif math.log(pressure_plog[j1]) == lnplog_high_rxns[i]:
-                        num_plog_k_head = sum(len(value) for value in list(rxn[i].plog_k.values())[:-1])
+                        num_plog_k_prev = sum(len(value) for value in list(rxn[i].plog_k.values())[:-1])
                         if count_high == 0:
                                 cg_plog.add_line(f"if (P > {pressure_plog[j1]}){{", 1)
                                 count_high=1
-                        # Checks if the previous reaction was a p-log reaction as well.
-                        # if rxn_count == 0 or (rxn_count != 0 and i != (ids_plog_rxn[rxn_count-1] + 1)):
-                        #     p2_idx = rxn_len + i + num_plog_k_head
-                        # else:
-                            # num_prev_plog_k = sum(len(value) for value in rxn[i-1].plog_k.values())
-                            # p2_idx = rxn_len + i + num_plog_k_head + num_prev_plog_k - 1
-                        num_plog_k = sum(len(value) for value in rxn[i].plog_k.values())
-                        p2_idx = rxn_len*(num_plog_k - 1) + i + num_plog_k_head
-                        
+                        p2_idx = rxn_len*num_plog_k_prev + i 
                         cg_plog.add_line(f"kf[{ids_new.index(i)}]"
                                          f"= {write_multiple_plog_rates_roll(p2_idx, pressure_plog[j1], i)};", 2)
-
+                    
                     rxn_count+=1
                 if count_low !=0 or count_high!=0:
                     cg_plog.add_line(f"}}", 1)
