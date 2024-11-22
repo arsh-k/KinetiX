@@ -680,7 +680,8 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                         break
                 if not match_found:
                     ids_EB.append(k0_ids)
-
+        # Process p-log if available
+        # Indices for ks are number of reactions * k_idx + reaction index
         elif rxn[i].type == 'P-log':
             plog_ids = i
             for idx, key in enumerate(rxn[i].plog_k):                
@@ -1130,15 +1131,18 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                                     count+=1
                                 elif (j1 != 0 or j2 != 1) and count == 0:
                                     cg_plog.add_line(f"}}", 1)
-                                    cg_plog.add_line(f"if ((P > {pressure_plog[j1]}) && (P <= {pressure_plog[j2]})){{", 1)
+                                    cg_plog.add_line(f"if ((P > {pressure_plog[j1]}) && "
+                                                     f"(P <= {pressure_plog[j2]})){{", 1)
                                     count+=1
 
                                 p1_idx = rxn_len*prev_num_k + i 
                                 p2_idx = p1_idx + rxn_len*num_k_p1
 
                                 cg_plog.add_line(f"kf[{ids_new.index(i)}] = exp("
-                                                 f" log({write_multiple_plog_rates_roll(p1_idx, p1, i)}) + ( log({write_multiple_plog_rates_roll(p2_idx, p2, i)})"
-                                                 f" - log({write_multiple_plog_rates_roll(p1_idx, p1, i)}) )*(lnP - {f(lnplog_vals_rxns[i][plog_index])})*{f(rcp_lnpdiff)});", 2)
+                                                 f" log({write_multiple_plog_rates_roll(p1_idx, p1, i)}) + "
+                                                 f"( log({write_multiple_plog_rates_roll(p2_idx, p2, i)}) - "
+                                                 f"log({write_multiple_plog_rates_roll(p1_idx, p1, i)}) )*"
+                                                 f"(lnP - {f(lnplog_vals_rxns[i][plog_index])})*{f(rcp_lnpdiff)});", 2)
                                 break
                         rxn_count+=1
                                 
@@ -1171,7 +1175,8 @@ def write_file_rates_roll(file_name, output_dir, align_width, target, sp_thermo,
                     cg_plog.add_line(f"}}", 1)
 
         # Combine all reactions
-        reaction_corr = cg_tb.get_code()  + cg_pd.get_code() + cg_troe.get_code() + cg_sri.get_code() + cg_plog.get_code()
+        reaction_corr = (cg_tb.get_code()  + cg_pd.get_code() + cg_troe.get_code() +
+                         cg_sri.get_code() + cg_plog.get_code())
         return reaction_corr
 
     # Reorder reactions back to original
